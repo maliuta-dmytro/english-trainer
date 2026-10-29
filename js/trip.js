@@ -1,0 +1,197 @@
+// Туристичний режим: ситуації поїздки до США — сценарій розмови, розмовник, культурні поради, тема диктанту.
+export const SITUATIONS = [
+  {
+    id: 'border', icon: '🛂', title: 'Паспортний контроль', scenario: 'border',
+    dictation: 'a conversation with a US border officer at the airport and an announcement about customs forms',
+    tips: [
+      'Відповідай коротко й чесно; жарти на кордоні недоречні.',
+      'Тримай під рукою адресу першого житла, зворотний квиток і підтвердження готелю.',
+      'Їжу (фрукти, м\'ясо, ковбасу) треба декларувати. Краще не везти зовсім.',
+    ],
+    phrases: [
+      { en: "I'm here for tourism.", ua: 'Я тут як турист.', context: "What's the purpose of your visit? — I'm here for tourism." },
+      { en: "I'll be staying for two weeks.", ua: 'Я пробуду тут два тижні.', context: "How long are you staying? — I'll be staying for two weeks." },
+      { en: "I'm staying at a hotel in Manhattan.", ua: 'Я зупинюся в готелі на Мангеттені.', context: "Where are you staying? — I'm staying at a hotel in Manhattan." },
+      { en: "Here's my return ticket.", ua: 'Ось мій зворотний квиток.', context: "Do you have a return ticket? — Yes, here's my return ticket." },
+      { en: 'I have nothing to declare.', ua: 'Мені нічого декларувати.', context: 'Anything to declare? — No, I have nothing to declare.' },
+      { en: 'Could you repeat that, please?', ua: 'Чи не могли б ви повторити?', context: "Sorry, could you repeat that, please? I didn't catch it." },
+      { en: 'This is my first time in the US.', ua: 'Я вперше в США.', context: 'Have you been here before? — No, this is my first time in the US.' },
+    ],
+  },
+  {
+    id: 'hotel', icon: '🏨', title: 'Готель', scenario: 'hotel',
+    dictation: 'a hotel front desk conversation about check-in, a room problem, breakfast and checkout',
+    tips: [
+      '«Resort fee» або «destination fee» часто не входить у ціну бронювання й доплачується на місці.',
+      'На картці блокують депозит (incidentals hold), його повертають після виїзду.',
+      'Покоївці зазвичай залишають $2–5 за ніч.',
+    ],
+    phrases: [
+      { en: 'I have a reservation for two nights.', ua: 'У мене бронювання на дві ночі.', context: 'Hi, checking in. I have a reservation for two nights.' },
+      { en: 'Is breakfast included?', ua: 'Сніданок включено?', context: 'Is breakfast included, or is it extra?' },
+      { en: 'What time is checkout?', ua: 'О котрій виїзд?', context: 'Thanks! And what time is checkout?' },
+      { en: 'Could I get a late checkout?', ua: 'Можна виселитися пізніше?', context: 'My flight is in the evening. Could I get a late checkout?' },
+      { en: "The AC in my room isn't working.", ua: 'Кондиціонер у моєму номері не працює.', context: "Hi, this is room 512. The AC in my room isn't working." },
+      { en: 'Could you hold my bags until this evening?', ua: 'Чи можете ви потримати мої сумки до вечора?', context: "I've checked out. Could you hold my bags until this evening?" },
+      { en: "What's the Wi-Fi password?", ua: 'Який пароль від Wi-Fi?', context: "Sorry, what's the Wi-Fi password?" },
+    ],
+  },
+  {
+    id: 'restaurant', icon: '🍔', title: 'Ресторан і чайові', scenario: 'restaurant',
+    dictation: 'a server taking an order at an American diner, with specials, side options and the check',
+    tips: [
+      'Чайові в ресторанах з офіціантом: 18–20% від суми до податку. Це фактично частина зарплати офіціанта.',
+      'Податок (sales tax) не входить у ціни в меню, його додають у рахунку.',
+      'Рахунок — «check», а не «bill». Вода з-під крана безкоштовна.',
+    ],
+    phrases: [
+      { en: 'Can we get a table for two?', ua: 'Можна столик на двох?', context: 'Hi! Can we get a table for two?' },
+      { en: 'We need a few more minutes.', ua: 'Нам потрібно ще кілька хвилин.', context: 'Are you ready to order? — We need a few more minutes.' },
+      { en: "I'll have the chicken sandwich.", ua: 'Мені сендвіч з куркою.', context: "I'll have the chicken sandwich with fries, please." },
+      { en: 'Can I get the dressing on the side?', ua: 'Можна заправку окремо?', context: 'Can I get the dressing on the side, please?' },
+      { en: 'Could we get some more water?', ua: 'Можна нам ще води?', context: 'Excuse me, could we get some more water?' },
+      { en: 'Can I get a box for this?', ua: 'Можна контейнер, щоб забрати це з собою?', context: "I couldn't finish it. Can I get a box for this?" },
+      { en: 'Could we get the check, please?', ua: 'Можна нам рахунок?', context: "We're all set. Could we get the check, please?" },
+      { en: 'Can we split the check?', ua: 'Можна розділити рахунок?', context: 'Can we split the check? Two cards, please.' },
+    ],
+  },
+  {
+    id: 'coffee', icon: '☕', title: 'Кав\'ярня і фастфуд', scenario: 'coffee',
+    dictation: 'a fast barista taking coffee orders with sizes, milk options and names for the cup',
+    tips: [
+      'Тебе запитають ім\'я для стаканчика: назви коротке, легке для вимови.',
+      '«For here or to go?» — тут чи з собою. Туалет — «restroom».',
+      'У Starbucks розміри tall / grande / venti. Чайові на терміналі — за бажанням.',
+    ],
+    phrases: [
+      { en: 'Can I get a medium latte with oat milk?', ua: 'Можна середнє лате на вівсяному молоці?', context: 'Hi! Can I get a medium latte with oat milk?' },
+      { en: 'To go, please.', ua: 'З собою, будь ласка.', context: 'For here or to go? — To go, please.' },
+      { en: 'Could you make it iced?', ua: 'Можна зробити його холодним, з льодом?', context: "It's so hot today. Could you make it iced?" },
+      { en: "That's all, thanks.", ua: 'Це все, дякую.', context: "Anything else? — That's all, thanks." },
+      { en: 'Is there a restroom I could use?', ua: 'Тут є туалет, яким можна скористатися?', context: 'Excuse me, is there a restroom I could use?' },
+      { en: 'Can I get a refill?', ua: 'Можна доливку?', context: 'This is filter coffee, right? Can I get a refill?' },
+    ],
+  },
+  {
+    id: 'car', icon: '🚗', title: 'Оренда авто й заправка', scenario: 'car',
+    dictation: 'a rental car agent explaining insurance, fuel policy and tolls, then a short talk at a gas station',
+    tips: [
+      'Потрібні національні права й міжнародне посвідчення водія (IDP), а також кредитна картка на ім\'я водія.',
+      'Пальне — «gas». На заправці часто треба спершу заплатити на касі: «Pump four, forty dollars».',
+      'Поворот праворуч на червоний дозволено після повної зупинки, якщо немає знака «No turn on red». Шкільний автобус з червоними вогнями — зупинись в обох напрямках.',
+    ],
+    phrases: [
+      { en: "I'd like to pick up my rental car.", ua: 'Я хочу забрати орендоване авто.', context: "Hi, I'd like to pick up my rental car. The reservation is online." },
+      { en: 'Is insurance included in the price?', ua: 'Страховку включено в ціну?', context: 'Is insurance included in the price, or is it extra?' },
+      { en: "I'll decline the extra coverage.", ua: 'Я відмовлюся від додаткового покриття.', context: "Thanks, but I'll decline the extra coverage." },
+      { en: 'Do I need to return it with a full tank?', ua: 'Потрібно повернути його з повним баком?', context: "What's the fuel policy? Do I need to return it with a full tank?" },
+      { en: 'How do the tolls work here?', ua: 'Як тут працюють платні дороги?', context: 'How do the tolls work here? Do I pay cash?' },
+      { en: 'Pump number four, forty dollars, please.', ua: 'Колонка номер чотири, сорок доларів, будь ласка.', context: 'Hi, pump number four, forty dollars, please.' },
+    ],
+  },
+  {
+    id: 'transport', icon: '🚇', title: 'Метро й транспорт', scenario: 'directions',
+    dictation: 'subway announcements in New York and a local explaining which train to take uptown',
+    tips: [
+      'У Нью-Йорку за метро платять системою OMNY: прикладаєш банківську картку чи телефон.',
+      'Uptown — на північ, downtown — на південь. Express-потяги зупиняються не на всіх станціях.',
+      'В Uber і Lyft чайові водію лишають у застосунку.',
+    ],
+    phrases: [
+      { en: 'How do I get to Times Square from here?', ua: 'Як дістатися звідси до Таймс-сквер?', context: 'Excuse me, how do I get to Times Square from here?' },
+      { en: 'Which train goes uptown?', ua: 'Який потяг іде в бік аптауна, на північ?', context: 'Sorry, which train goes uptown?' },
+      { en: 'Is this the right platform for Brooklyn?', ua: 'Це правильна платформа на Бруклін?', context: 'Is this the right platform for Brooklyn?' },
+      { en: 'Do I need to transfer?', ua: 'Мені потрібна пересадка?', context: 'Do I need to transfer, or is it a direct train?' },
+      { en: "I'm getting off at the next stop.", ua: 'Я виходжу на наступній зупинці.', context: "Excuse me, I'm getting off at the next stop." },
+      { en: 'Could you let me know when we get there?', ua: 'Скажете мені, коли ми туди доїдемо?', context: "I'm going to Main Street. Could you let me know when we get there?" },
+    ],
+  },
+  {
+    id: 'shop', icon: '🛍️', title: 'Магазин і повернення', scenario: 'shop',
+    dictation: 'a store associate helping with sizes, a sale, and a return policy explanation',
+    tips: [
+      'Податок додають на касі: залежно від штату від 0 до близько 10%.',
+      'Повернення зазвичай можливе впродовж 30 днів з чеком; інколи лише на рахунок магазину (store credit).',
+      'На касі можуть запитати: «Would you like a receipt?», «Paper or plastic?»',
+    ],
+    phrases: [
+      { en: "I'm just looking, thanks.", ua: 'Я просто дивлюся, дякую.', context: "Can I help you find anything? — I'm just looking, thanks." },
+      { en: 'Do you have this in a medium?', ua: 'У вас є це розміру M?', context: 'I love this jacket. Do you have this in a medium?' },
+      { en: 'Where are the fitting rooms?', ua: 'Де примірочні?', context: 'Excuse me, where are the fitting rooms?' },
+      { en: "I'd like to return this.", ua: 'Я хочу це повернути.', context: "Hi, I'd like to return this. It doesn't fit." },
+      { en: 'Is it a refund or store credit?', ua: 'Гроші повернуть, чи тільки на рахунок магазину?', context: 'If I return it, is it a refund or store credit?' },
+      { en: 'Does the price include tax?', ua: 'Ціна вже з податком?', context: 'Does the price include tax?' },
+    ],
+  },
+  {
+    id: 'pharmacy', icon: '💊', title: 'Аптека й лікар', scenario: 'pharmacy',
+    dictation: 'a pharmacist asking about symptoms and explaining how to take over-the-counter medicine',
+    tips: [
+      'Аптека — «pharmacy» або «drugstore» (CVS, Walgreens). Багато ліків продають без рецепта (over the counter).',
+      'Лікування в США дуже дороге, тож туристична страховка обов\'язкова.',
+      'Urgent care значно дешевше, ніж emergency room. Екстрений номер — 911.',
+    ],
+    phrases: [
+      { en: 'I have a terrible headache. What would you recommend?', ua: 'У мене сильно болить голова. Що порадите?', context: 'Hi, I have a terrible headache. What would you recommend?' },
+      { en: 'Do I need a prescription for this?', ua: 'Мені для цього потрібен рецепт?', context: 'Do I need a prescription for this?' },
+      { en: "I'm allergic to penicillin.", ua: 'У мене алергія на пеніцилін.', context: "Before you give me anything, I'm allergic to penicillin." },
+      { en: 'How often should I take it?', ua: 'Як часто його приймати?', context: 'How often should I take it, and with food or without?' },
+      { en: 'I think I have a fever.', ua: 'Здається, у мене температура.', context: 'I feel awful. I think I have a fever.' },
+      { en: 'Is there an urgent care clinic nearby?', ua: 'Поруч є клініка невідкладної допомоги?', context: 'Is there an urgent care clinic nearby?' },
+    ],
+  },
+  {
+    id: 'phone', icon: '📞', title: 'Дзвінок телефоном', scenario: 'phone',
+    dictation: 'a phone call to book a table, with a host speaking quickly and spelling a name',
+    tips: [
+      'По телефону розуміти найважче: тренуйся в голосовому режимі з прихованим текстом.',
+      'Літери диктують так: «A as in Apple, B as in Boy». Номери телефону кажуть по одній цифрі.',
+      'Не соромся просити говорити повільніше. Це абсолютно нормально.',
+    ],
+    phrases: [
+      { en: "I'd like to make a reservation for Friday at seven.", ua: 'Я хотів би забронювати на п\'ятницю на сьому.', context: "Hi, I'd like to make a reservation for Friday at seven." },
+      { en: "It's for four people.", ua: 'На чотирьох людей.', context: "How many in your party? — It's for four people." },
+      { en: 'Could you speak a little slower, please?', ua: 'Чи могли б ви говорити трохи повільніше?', context: "Sorry, could you speak a little slower, please? I'm not a native speaker." },
+      { en: "Sorry, you're breaking up.", ua: 'Вибачте, вас погано чути, зв\'язок переривається.', context: "Sorry, you're breaking up. Could you say that again?" },
+      { en: 'Could you spell that for me?', ua: 'Чи могли б ви продиктувати це по літерах?', context: 'Could you spell that for me?' },
+      { en: "I'm calling about my reservation.", ua: 'Я телефоную щодо свого бронювання.', context: "Hi, I'm calling about my reservation for tonight." },
+    ],
+  },
+  {
+    id: 'emergency', icon: '🆘', title: 'Екстрена ситуація', scenario: 'emergency',
+    dictation: 'a police officer taking a report about a lost wallet and explaining next steps',
+    tips: [
+      '911 — поліція, швидка й пожежна в одному номері.',
+      'Одразу заблокуй картки через застосунок банку. Номер поліцейського протоколу (report number) знадобиться для страховки.',
+      'Збережи контакти посольства України у Вашингтоні та консульств, а також фото паспорта в хмарі.',
+    ],
+    phrases: [
+      { en: 'I lost my wallet.', ua: 'У мене загубився гаманець.', context: "Excuse me, I lost my wallet. I think it was on the bus." },
+      { en: 'My phone was stolen.', ua: 'У мене вкрали телефон.', context: 'I need help. My phone was stolen about an hour ago.' },
+      { en: 'I need to report a theft.', ua: 'Мені потрібно заявити про крадіжку.', context: 'Hi, I need to report a theft.' },
+      { en: "It's an emergency.", ua: 'Це екстрена ситуація.', context: "Please, can you help me? It's an emergency." },
+      { en: 'Where is the nearest police station?', ua: 'Де найближчий поліцейський відділок?', context: 'Excuse me, where is the nearest police station?' },
+      { en: 'Could I get a copy of the report?', ua: 'Можна мені копію протоколу?', context: 'Could I get a copy of the report for my insurance?' },
+    ],
+  },
+  {
+    id: 'smalltalk', icon: '🍻', title: 'Small talk', scenario: 'smalltalk-bar',
+    dictation: 'two strangers making small talk about where they are from, travel and recommendations',
+    tips: [
+      '«How are you?» — це привітання, а не питання про справи. Відповідай «Good, you?»',
+      'Говорити з незнайомими — нормально. Компліменти речам («I love your shirt!») сприймають тепло.',
+      'Уникай тем політики, релігії та зарплати з малознайомими людьми.',
+    ],
+    phrases: [
+      { en: 'So, where are you from?', ua: 'То звідки ви?', context: 'So, where are you from? Are you local?' },
+      { en: "I'm from Ukraine, from Kyiv.", ua: 'Я з України, з Києва.', context: "Where are you from? — I'm from Ukraine, from Kyiv." },
+      { en: 'How long have you lived here?', ua: 'Як довго ви тут живете?', context: 'Nice! How long have you lived here?' },
+      { en: 'Any recommendations for things to do around here?', ua: 'Порадите, що тут варто зробити чи подивитися?', context: "It's my first time in town. Any recommendations for things to do around here?" },
+      { en: 'That sounds awesome!', ua: 'Звучить чудово!', context: "We're going to a game tomorrow. — That sounds awesome!" },
+      { en: 'It was nice talking to you.', ua: 'Було приємно поговорити.', context: 'Well, I should get going. It was nice talking to you.' },
+      { en: 'Have a good one!', ua: 'Гарного дня!', context: 'Thanks for the tips! Have a good one!' },
+    ],
+  },
+];
+
+export const situationById = (id) => SITUATIONS.find((s) => s.id === id);

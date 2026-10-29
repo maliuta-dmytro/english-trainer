@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>English Trainer</title>
+  <meta name="description" content="Персональний тренажер англійської B2 → C1">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand"><img src="icon.svg" alt="" width="28" height="28"> English Trainer</a>
+    <nav class="nav" id="nav">
+      <a href="#/" data-route="home">Сьогодні</a>
+      <a href="#/talk" data-route="talk">Розмова</a>
+      <a href="#/dictation" data-route="dictation">Диктант</a>
+      <a href="#/cards" data-route="cards">Картки</a>
+      <a href="#/progress" data-route="progress">Прогрес</a>
+      <a href="#/settings" data-route="settings" title="Налаштування" aria-label="Налаштування">⚙</a>
+    </nav>
+  </header>
+  <main id="app" class="container"></main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
