@@ -6,7 +6,10 @@ import {
 import { stackedColumns, columns, legend } from '../charts.js';
 import { statTile } from '../icons.js';
 import { weeklyRates, wordSources, fmt, trend } from './journal.js';
-import { esc, $, tagLabel } from '../ui.js';
+import { dailyPages, readingSessions, bookPct } from '../books.js';
+import { esc, $, tagLabel, plural } from '../ui.js';
+
+const PAGES_WORD = ['сторінка', 'сторінки', 'сторінок'];
 
 const WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 const ADVICE = {
@@ -20,9 +23,9 @@ const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
 const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)} год ${Math.round(m % 60)} хв` : `${Math.round(m)} хв`);
 
 export async function render(root) {
-  const [sessions, cards, errors, convs, tripDate, days] = await Promise.all([
+  const [sessions, cards, errors, convs, tripDate, days, books] = await Promise.all([
     getAll('sessions'), getAll('cards'), getAll('errors'), getAll('conversations'),
-    getSetting('tripDate', '2027-09-01'), streak(),
+    getSetting('tripDate', '2027-09-01'), streak(), getAll('books'),
   ]);
 
   const allMin = sessions.reduce((a, s) => a + s.minutes, 0);
@@ -48,6 +51,15 @@ export async function render(root) {
   const weekShares = STREAMS.map((s) => ({ ...s, min: week[s.id], pct: weekTotal ? (week[s.id] / weekTotal) * 100 : 0 }));
   const weakest = [...weekShares].sort((a, b) => a.pct - b.pct)[0];
   const delta = weekTotal - prevTotal;
+
+  const pages14 = dailyPages(sessions, 14);
+  const sumPages = (rows) => rows.reduce((a, d) => a + d.pages, 0);
+  const readWeek = sumPages(pages14.slice(7));
+  const readPrev = sumPages(pages14.slice(0, 7));
+  const readTotal = readingSessions(sessions).reduce((a, s) => a + s.pages, 0);
+  const reading = books.filter((b) => b.status === 'reading');
+  const finished = books.filter((b) => b.status === 'done').length;
+  const bookWords = cards.filter((c) => c.source === 'book').length;
 
   root.innerHTML = `
     <h1>Прогрес</h1>
@@ -100,6 +112,18 @@ export async function render(root) {
           : '✓ Потоки збалансовані. Так тримати!'}</p>
     </div>
 
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Читання</h2><span class="spacer"></span><a href="#/books" class="small">Мої книжки →</a></div>
+      ${readTotal || reading.length
+        ? `<p class="muted small" style="margin:2px 0 10px">${plural(readWeek, PAGES_WORD)} за 7 днів${readPrev || readWeek ? ` · <span class="${readWeek >= readPrev ? 'delta-up' : 'delta-down'}">${readWeek >= readPrev ? '▲' : '▼'} ${Math.abs(readWeek - readPrev)}</span> до попередніх 7` : ''}
+            · усього ${plural(readTotal, PAGES_WORD)}${finished ? ` · дочитано книжок: ${finished}` : ''}${bookWords ? ` · слів із книжок у картках: ${bookWords}` : ''}</p>
+           <div id="ch-pages"></div>
+           ${reading.length ? `<ul class="card-list compact" style="margin-top:8px">${reading.map((b) => `
+             <li><a href="#/books?id=${b.id}" style="flex:1;min-width:0">${esc(b.title)}</a>
+               ${b.totalPages ? `<div class="meter" style="width:120px"><div style="width:${bookPct(b)}%"></div></div><span class="muted small">${bookPct(b)}%</span>` : `<span class="muted small">с. ${b.page}</span>`}</li>`).join('')}</ul>` : ''}`
+        : '<p class="muted small">Додай книжку, яку читаєш, і записуй сторінки: вони підуть у потік Input, а тут з\'явиться графік. <a href="#/books">Додати книжку →</a></p>'}
+    </div>
+
     <div class="grid grid-2">
       <div class="card">
         <h2>Повторення на 7 днів</h2>
@@ -128,6 +152,16 @@ export async function render(root) {
         ${STREAMS.filter((s) => d[s.id] > 0).map((s) => `<div class="tip-row"><i style="background:${s.color}"></i>${esc(s.short)}<b>${Math.round(d[s.id])}</b></div>`).join('')}`;
     },
   });
+
+  if ($('#ch-pages')) {
+    columns($('#ch-pages'), {
+      values: pages14.map((d) => d.pages),
+      labels: pages14.map((d) => (d.date === todayKey ? 'сьог' : String(Number(d.date.slice(8))))),
+      color: 'var(--input)',
+      ariaLabel: 'Прочитані сторінки за останні 14 днів',
+      tip: (i) => `<strong>${WEEKDAYS[pages14[i].weekday]}, ${new Date(`${pages14[i].date}T12:00`).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })}</strong> · ${plural(pages14[i].pages, PAGES_WORD)}`,
+    });
+  }
 
   const labels = forecast.map((_, i) => {
     if (i === 0) return 'сьог';

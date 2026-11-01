@@ -2,13 +2,13 @@
 import { toast } from './ui.js';
 
 const DB_NAME = 'english-trainer';
-const DB_VERSION = 9;
+const DB_VERSION = 10;
 
 // Ключі API ніколи не потрапляють у бекап і не відновлюються з нього.
 const SECRET_KEYS = new Set(['apiKey', 'geminiKey', 'youtubeKey']);
 
 // Синхронізація між пристроями (Google Drive) охоплює ці сховища. Медіа й кеш голосів — лише локально.
-export const SYNCED_STORES = ['cards', 'sessions', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels', 'meta'];
+export const SYNCED_STORES = ['cards', 'sessions', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels', 'books', 'meta'];
 // Налаштування, що стосуються лише цього пристрою: ключі, стан входу, голос браузера (на кожному свій).
 export const LOCAL_META = new Set([...SECRET_KEYS, 'syncToken', 'syncInfo', 'syncClientId', 'ttsVoice']);
 const isSynced = (store, obj) => SYNCED_STORES.includes(store) && !(store === 'meta' && LOCAL_META.has(obj?.key));
@@ -25,6 +25,7 @@ const isSynced = (store, obj) => SYNCED_STORES.includes(store) && !(store === 'm
 // tts           — кеш озвучених голосом Gemini фраз (Blob), щоб не витрачати ліміт повторно
 // retells       — сесії «Слухай і перекажи»: матеріал, фрагмент, позначки, переказ, розбір
 // channels      — збережені YouTube-канали й кеш списку їхніх відео
+// books         — книжки, які читаю: поточна сторінка, статус (прочитані сторінки — в sessions)
 // deleted       — сліди видалень ({store, key, ts}), щоб видалене на одному пристрої зникло й на іншому
 let dbPromise;
 
@@ -72,6 +73,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains('retells')) {
         db.createObjectStore('retells', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('books')) {
+        db.createObjectStore('books', { keyPath: 'id' });
       }
       if (!db.objectStoreNames.contains('deleted')) {
         db.createObjectStore('deleted', { keyPath: 'id' });
@@ -153,8 +157,8 @@ export function uid() {
 // Повний бекап у JSON; імпорт замінює записи з тими самими id і додає нові.
 export async function exportAll() {
   // Медіафайли в бекап не потрапляють (завеликі) — після відновлення їх додають знову.
-  const [cards, sessions, meta, conversations, errors, dictations, fluency, lessons, retells, channels] = await Promise.all(
-    ['cards', 'sessions', 'meta', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels'].map(getAll),
+  const [cards, sessions, meta, conversations, errors, dictations, fluency, lessons, retells, channels, books] = await Promise.all(
+    ['cards', 'sessions', 'meta', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels', 'books'].map(getAll),
   );
   return {
     app: 'english-trainer',
@@ -169,6 +173,7 @@ export async function exportAll() {
     lessons,
     retells,
     channels,
+    books,
     meta: meta.filter((m) => !LOCAL_META.has(m.key)),
   };
 }
@@ -184,6 +189,7 @@ export async function importAll(data) {
   await putMany('lessons', data.lessons || []);
   await putMany('retells', data.retells || []);
   await putMany('channels', data.channels || []);
+  await putMany('books', data.books || []);
   await putMany('meta', (data.meta || []).filter((m) => !LOCAL_META.has(m.key)));
   return { cards: (data.cards || []).length, sessions: (data.sessions || []).length };
 }

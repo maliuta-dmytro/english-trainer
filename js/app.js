@@ -13,10 +13,11 @@ import * as fluency from './views/fluency.js';
 import * as grammar from './views/grammar.js';
 import * as trip from './views/trip.js';
 import * as retell from './views/retell.js';
+import * as books from './views/books.js';
 
-const routes = { '': home, home, review, cards, settings, talk, journal, progress, dictation, fluency, grammar, trip, retell };
+const routes = { '': home, home, review, cards, settings, talk, journal, progress, dictation, fluency, grammar, trip, retell, books };
 // Підрозділи, що підсвічують свій пункт меню.
-const NAV_PARENT = { dictation: 'retell', fluency: 'talk', trip: 'talk', review: 'cards', journal: 'progress', grammar: 'progress' };
+const NAV_PARENT = { dictation: 'retell', fluency: 'talk', trip: 'talk', review: 'cards', journal: 'progress', grammar: 'progress', books: 'progress' };
 const app = document.getElementById('app');
 let cleanup = null;
 let renderId = 0;

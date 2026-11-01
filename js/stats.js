@@ -156,9 +156,10 @@ export async function nextLearningAhead(now = Date.now(), windowMs = 20 * 60_000
 
 export const directions = (card) => (card.reverse ? ['ua_en', 'en_ua'] : ['ua_en']);
 
-export function makeCard({ en, ua, context = '', tag = 'vocab', source = 'manual', reverse = true }) {
+export function makeCard({ en, ua, context = '', tag = 'vocab', source = 'manual', reverse = true, ...extra }) {
   const now = Date.now();
   return {
+    ...extra, // звідки фраза, напр. bookId, bookTitle, page
     id: uid(),
     en: en.trim(),
     ua: ua.trim(),

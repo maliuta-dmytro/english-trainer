@@ -6,6 +6,7 @@ import {
 } from '../stats.js';
 import { recommendedTopic } from './grammar.js';
 import { statTile } from '../icons.js';
+import { undoReading } from '../books.js';
 import { esc, $, $$, toast, tagLabel, plural, ERRORS_WORD } from '../ui.js';
 
 // Денні плани з брифу; хвилини орієнтовні. [назва, хвилини, потік, дія]
@@ -30,6 +31,7 @@ const MODULES = [
   { href: '#/journal', title: 'Журнал помилок', desc: 'Помилки за категоріями → автокартки', ready: true },
   { href: '#/progress', title: 'Прогрес', desc: 'Чотири потоки, години до мети, прогноз повторень', ready: true },
   { href: '#/retell', title: '🎧 Слухай і перекажи', desc: 'Подкаст чи відео → переказ → розбір змісту й мови → картки', ready: true },
+  { href: '#/books', title: '📖 Книжки', desc: 'Що читаю, сторінки за день у прогрес, слова з книжок у картки', ready: true },
   { href: '#/dictation', title: 'Диктант', desc: 'Інтенсивне слухання з підсвіткою розбіжностей', ready: true },
   { href: '#/fluency', title: 'Fluency 4/3/2', desc: 'Та сама історія за 4, 3 і 2 хвилини, із записом голосу', ready: true },
   { href: '#/grammar', title: 'Граматичні міні-уроки', desc: 'Під найчастіші помилки з журналу', ready: true },
@@ -56,10 +58,12 @@ function planProgress(plan, todayByStream) {
 }
 
 export async function render(root) {
-  const [q, days, sessions, cards, tripDate, planLen, rec, lessons] = await Promise.all([
+  const [q, days, sessions, cards, tripDate, planLen, rec, lessons, books] = await Promise.all([
     buildQueue(), streak(), getAll('sessions'), getAll('cards'),
-    getSetting('tripDate', '2027-09-01'), getSetting('dailyPlan', 60), recommendedTopic(), getAll('lessons'),
+    getSetting('tripDate', '2027-09-01'), getSetting('dailyPlan', 60), recommendedTopic(), getAll('lessons'), getAll('books'),
   ]);
+  const reading = books.filter((b) => b.status === 'reading');
+  const bookTitle = (id) => books.find((b) => b.id === id)?.title;
   // Граматика 2–3 рази на тиждень: пропонуємо урок, якщо є повторювані помилки й уроку не було 3 дні.
   const lastLesson = Math.max(0, ...lessons.map((l) => l.created));
   const suggestGrammar = rec.errors >= 2 && Date.now() - lastLesson > 3 * 86_400_000;
@@ -125,6 +129,18 @@ export async function render(root) {
         <div class="muted small">${plural(rec.errors, ERRORS_WORD)} за 4 тижні в журналі. Міні-урок на 15 хвилин зі вправами на твоїх помилках →</div>
       </a>` : ''}
 
+    ${reading.length ? `
+      <div class="card">
+        <div class="row"><h2 style="margin:0">📖 Читаю зараз</h2><span class="spacer"></span><a href="#/books" class="small">Усі книжки →</a></div>
+        <ul class="card-list compact" style="margin-top:6px">
+          ${reading.map((b) => `<li>
+            <a href="#/books?id=${b.id}" style="flex:1;min-width:0">${esc(b.title)}</a>
+            <span class="muted small">${b.totalPages ? `с. ${b.page} з ${b.totalPages}` : `с. ${b.page}`}</span>
+            <a class="btn icon-btn" href="#/books?id=${b.id}">Записати</a>
+          </li>`).join('')}
+        </ul>
+      </div>` : ''}
+
     <div class="card" id="log">
       <h2>Записати час поза застосунком</h2>
       <p class="muted small">Серіали, подкасти й живі розмови теж рахуються: так видно реальний баланс чотирьох потоків.</p>
@@ -145,7 +161,7 @@ export async function render(root) {
         <ul class="card-list compact">
           ${todaySessions.map((s) => `<li>
             <span class="dot" style="background:${STREAMS.find((x) => x.id === s.stream)?.color}"></span>
-            <span style="flex:1">${esc(activityLabel(s.activity))}</span>
+            <span style="flex:1">${esc(activityLabel(s.activity))}${s.pages ? `<span class="muted small"> · ${esc(bookTitle(s.bookId) || 'книжка')}, ${plural(s.pages, ['сторінка', 'сторінки', 'сторінок'])}</span>` : ''}</span>
             <span class="muted small">${s.minutes < 1 ? '<1' : Math.round(s.minutes)} хв · ${new Date(s.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
             ${s.manual ? `<button class="ghost icon-btn danger" data-del="${s.id}" aria-label="Видалити запис">✕</button>` : ''}
           </li>`).join('')}
@@ -191,7 +207,10 @@ export async function render(root) {
     render(root);
   });
   $$('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-    await del('sessions', b.dataset.del);
+    const s = todaySessions.find((x) => x.id === b.dataset.del);
+    // Запис читання повертає й сторінку книжки назад.
+    if (s?.bookId) await undoReading(s);
+    else await del('sessions', b.dataset.del);
     render(root);
   }));
 }

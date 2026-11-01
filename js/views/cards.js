@@ -19,6 +19,15 @@ function parseBulk(text, reverse) {
   return out;
 }
 
+// Звідки картка — показуємо біля кожної, щоб пам'ятати, де трапилась фраза.
+const SOURCES = {
+  manual: 'додано вручну', starter: 'стартовий набір', conversation: 'з розмови з ШІ', retell: 'зі «Слухай і перекажи»',
+  dictation: 'з диктанту', grammar: 'з граматичного уроку', journal: 'з журналу помилок', trip: 'з розмовника поїздки', book: 'з книжок',
+};
+const sourceLabel = (c) => (c.source === 'book' && c.bookTitle
+  ? `📖 <a href="#/books?id=${c.bookId}">${esc(c.bookTitle)}</a>${c.page ? `, с. ${c.page}` : ''}`
+  : esc(SOURCES[c.source] || ''));
+
 function nextDueLabel(card) {
   const s = card.srs.ua_en;
   if (card.suspended) return 'призупинено';
@@ -32,6 +41,7 @@ export async function render(root) {
   let editing = null;
   let filterText = '';
   let filterTag = '';
+  let filterSource = '';
 
   const queue = await buildQueue();
   const toReview = queue.due.length + queue.fresh.length;
@@ -71,6 +81,7 @@ export async function render(root) {
       <div class="row" style="margin-bottom:10px">
         <input type="search" id="q" placeholder="Пошук…" style="flex:1;min-width:160px">
         <select id="tag-filter" style="width:auto"><option value="">Усі категорії</option>${tagOptions('')}</select>
+        <select id="source-filter" style="width:auto"><option value="">Будь-яке джерело</option>${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select>
       </div>
       <div id="list"></div>
     </div>`;
@@ -90,8 +101,8 @@ export async function render(root) {
     const cards = (await getAll('cards')).sort((a, b) => b.created - a.created);
     const q = filterText.toLowerCase();
     const shown = cards.filter((c) =>
-      (!filterTag || c.tag === filterTag) &&
-      (!q || c.en.toLowerCase().includes(q) || c.ua.toLowerCase().includes(q) || c.context.toLowerCase().includes(q)));
+      (!filterTag || c.tag === filterTag) && (!filterSource || (c.source || 'manual') === filterSource) &&
+      (!q || [c.en, c.ua, c.context, c.bookTitle || ''].some((s) => s.toLowerCase().includes(q))));
 
     const list = $('#list');
     if (!cards.length) {
@@ -117,7 +128,7 @@ export async function render(root) {
               <div class="en">${esc(c.en)}</div>
               <div>${esc(c.ua)}</div>
               ${c.context ? `<div class="meta"><em>${esc(c.context)}</em></div>` : ''}
-              <div class="meta"><span class="tag">${esc(tagLabel(c.tag))}</span> · ${nextDueLabel(c)}${c.srs.ua_en.lapses ? ` · помилок: ${c.srs.ua_en.lapses}` : ''}</div>
+              <div class="meta"><span class="tag">${esc(tagLabel(c.tag))}</span>${sourceLabel(c) ? ` · ${sourceLabel(c)}` : ''} ·${nextDueLabel(c)}${c.srs.ua_en.lapses ? ` · помилок: ${c.srs.ua_en.lapses}` : ''}</div>
             </div>
             <button class="ghost icon-btn" data-act="edit" title="Редагувати" aria-label="Редагувати">✎</button>
             <button class="ghost icon-btn danger" data-act="del" title="Видалити" aria-label="Видалити">✕</button>
@@ -179,6 +190,7 @@ export async function render(root) {
 
   $('#q').addEventListener('input', (e) => { filterText = e.target.value; drawList(); });
   $('#tag-filter').addEventListener('change', (e) => { filterTag = e.target.value; drawList(); });
+  $('#source-filter').addEventListener('change', (e) => { filterSource = e.target.value; drawList(); });
 
   await drawList();
 }

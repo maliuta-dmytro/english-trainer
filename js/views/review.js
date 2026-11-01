@@ -99,6 +99,7 @@ export async function render(root) {
         ${diffHtml}
         <div class="answer">${esc(answer)}</div>
         ${card.context ? `<div class="context">${esc(card.context)}</div>` : ''}
+        ${card.bookTitle ? `<div class="muted small" style="margin:-4px 0 10px">📖 ${esc(card.bookTitle)}${card.page ? `, с. ${card.page}` : ''}</div>` : ''}
         ${canSpeak() ? '<button class="ghost icon-btn" id="say">🔊 Послухати</button> <button class="ghost icon-btn" id="say-slow">🐢 Повільно</button>' : ''}
         <div class="grades">
           ${GRADES.map(({ g, key, label }) => `
