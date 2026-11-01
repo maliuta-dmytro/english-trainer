@@ -1,6 +1,7 @@
 import { getAll, put } from '../db.js';
 import { makeCard } from '../stats.js';
 import { GRAMMAR_TOPICS } from '../grammar.js';
+import { statTile } from '../icons.js';
 import { esc, $, $$, toast, tagLabel, ERROR_CATEGORIES } from '../ui.js';
 
 const WEEK = 7 * 86_400_000;
@@ -63,9 +64,9 @@ export async function render(root) {
   root.innerHTML = `
     <h1>Журнал помилок</h1>
     <div class="grid grid-3" style="margin-bottom:16px">
-      <div class="stat"><div class="num">${errors.length}</div><div class="label">помилок у журналі · розмов: ${analyzed.length}</div></div>
-      <div class="stat"><div class="num">${fmt(stats.total[0])} ${trend(stats.total)}</div><div class="label">помилок на 100 слів за 7 днів (тиждень тому: ${fmt(stats.total[1])})</div></div>
-      <div class="stat"><div class="num" style="font-size:1.2rem;padding:6px 0">${top ? esc(tagLabel(top.cat)) : '—'}</div><div class="label">найчастіша тема за 4 тижні</div></div>
+      ${statTile('book', errors.length, `помилок у журналі · розмов: ${analyzed.length}`)}
+      ${statTile('trend', `${fmt(stats.total[0])} ${trend(stats.total)}`, `помилок на 100 слів за 7 днів (тиждень тому: ${fmt(stats.total[1])})`)}
+      ${statTile('alert', `<span style="font-size:1.15rem">${top ? esc(tagLabel(top.cat)) : '—'}</span>`, 'найчастіша тема за 4 тижні')}
     </div>
 
     <div class="card">

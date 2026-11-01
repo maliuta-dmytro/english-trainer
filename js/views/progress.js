@@ -4,6 +4,7 @@ import {
   STREAMS, GOAL_HOURS, dailyMinutes, sumStreams, streak, longestStreak, dueForecast, directions,
 } from '../stats.js';
 import { stackedColumns, columns, legend } from '../charts.js';
+import { statTile } from '../icons.js';
 import { weeklyRates, fmt, trend } from './journal.js';
 import { esc, $, tagLabel } from '../ui.js';
 
@@ -64,11 +65,10 @@ export async function render(root) {
     </div>
 
     <div class="grid grid-3" style="margin-bottom:16px">
-      <div class="stat"><div class="num">${fmtMin(weekTotal)}</div>
-        <div class="label">за 7 днів${prevTotal || weekTotal ? ` · <span class="${delta >= 0 ? 'delta-up' : 'delta-down'}">${delta >= 0 ? '▲' : '▼'} ${fmtMin(Math.abs(delta))}</span> до попередніх 7` : ''}</div></div>
-      <div class="stat"><div class="num">${days}🔥</div><div class="label">днів поспіль · рекорд ${longestStreak(sessions)}</div></div>
-      <div class="stat"><div class="num">${mature}<span class="muted" style="font-size:1rem"> / ${active} / ${fresh}</span></div><div class="label">фраз: вивчено / вчаться / нові</div></div>
-      <div class="stat"><div class="num">${fmt(errStats.total[0])}</div><div class="label"><a href="#/journal">помилок на 100 слів</a> за 7 днів ${trend(errStats.total)}</div></div>
+      ${statTile('clock', fmtMin(weekTotal), `за 7 днів${prevTotal || weekTotal ? ` · <span class="${delta >= 0 ? 'delta-up' : 'delta-down'}">${delta >= 0 ? '▲' : '▼'} ${fmtMin(Math.abs(delta))}</span> до попередніх 7` : ''}`)}
+      ${statTile('flame', days, `днів поспіль · рекорд ${longestStreak(sessions)}`)}
+      ${statTile('layers', `${mature}<span class="muted" style="font-size:1rem"> / ${active} / ${fresh}</span>`, 'фраз: вивчено / вчаться / нові')}
+      ${statTile('alert', fmt(errStats.total[0]), `<a href="#/journal">помилок на 100 слів</a> за 7 днів ${trend(errStats.total)}`)}
     </div>
 
     <div class="card">

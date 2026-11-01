@@ -22,7 +22,7 @@ async function render() {
   const view = routes[name] || home;
   const id = ++renderId;
   if (cleanup) { const c = cleanup; cleanup = null; await c(); }
-  $$('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.route === (name || 'home')));
+  $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === (name || 'home')));
   app.innerHTML = '';
   const c = await view.render(app);
   if (id === renderId) cleanup = c || null;

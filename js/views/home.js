@@ -5,6 +5,7 @@ import {
   dailyMinutes, sumStreams,
 } from '../stats.js';
 import { recommendedTopic } from './grammar.js';
+import { statTile } from '../icons.js';
 import { esc, $, $$, toast, tagLabel, plural, ERRORS_WORD } from '../ui.js';
 
 // Денні плани з брифу; хвилини орієнтовні. [назва, хвилини, потік, дія]
@@ -80,10 +81,10 @@ export async function render(root) {
     <p class="muted">${esc(stageHint(daysLeft))}</p>
 
     <div class="grid grid-3" style="margin-bottom:16px">
-      <div class="stat"><div class="num">${daysLeft}</div><div class="label">днів до поїздки до США</div></div>
-      <div class="stat"><div class="num">${days}🔥</div><div class="label">днів поспіль</div></div>
-      <div class="stat"><div class="num">${toReview}</div><div class="label">карток до повторення (${q.due.length} повтор · ${q.fresh.length} нових)</div></div>
-      <div class="stat"><div class="num">${mature}<span class="muted" style="font-size:1rem"> / ${cards.length}</span></div><div class="label">фраз вивчено (інтервал ≥ 21 д)</div></div>
+      ${statTile('plane', daysLeft, 'днів до поїздки до США')}
+      ${statTile('flame', days, 'днів поспіль')}
+      ${statTile('cards', toReview, `карток до повторення · ${q.due.length} повтор, ${q.fresh.length} нових`)}
+      ${statTile('check', `${mature}<span class="muted" style="font-size:1rem"> / ${cards.length}</span>`, 'фраз вивчено (інтервал ≥ 21 д)')}
     </div>
 
     <div class="card">
