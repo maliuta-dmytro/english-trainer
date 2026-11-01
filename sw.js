@@ -1,5 +1,5 @@
 // Service worker: network-first, щоб оновлення підтягувались одразу, а офлайн працював кеш.
-const CACHE = 'english-trainer-v12';
+const CACHE = 'english-trainer-v13';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg',
   'js/app.js', 'js/db.js', 'js/srs.js', 'js/diff.js', 'js/ui.js', 'js/stats.js', 'js/speech.js', 'js/starter.js',

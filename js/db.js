@@ -1,4 +1,6 @@
 // Тонка обгортка над IndexedDB. Усі дані живуть локально в браузері.
+import { toast } from './ui.js';
+
 const DB_NAME = 'english-trainer';
 const DB_VERSION = 6;
 
@@ -54,8 +56,19 @@ function openDb() {
         db.createObjectStore('tts', { keyPath: 'id' });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Інша вкладка відкрила новішу версію застосунку й хоче оновити базу:
+      // звільняємо з'єднання й перезавантажуємось, щоб і ця вкладка отримала нову версію.
+      db.onversionchange = () => {
+        db.close();
+        location.reload();
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
+    // Оновлення бази чекає, поки закриються старі вкладки (наприклад, зі старою версією без onversionchange).
+    req.onblocked = () => toast('Застосунок оновився. Закрий або перезавантаж інші вкладки English Trainer, щоб завершити оновлення.');
   });
   return dbPromise;
 }
