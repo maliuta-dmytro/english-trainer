@@ -2,7 +2,16 @@
 import { toast } from './ui.js';
 
 const DB_NAME = 'english-trainer';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
+
+// Ключі API ніколи не потрапляють у бекап і не відновлюються з нього.
+const SECRET_KEYS = new Set(['apiKey', 'geminiKey', 'youtubeKey']);
+
+// Синхронізація між пристроями (Google Drive) охоплює ці сховища. Медіа й кеш голосів — лише локально.
+export const SYNCED_STORES = ['cards', 'sessions', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels', 'meta'];
+// Налаштування, що стосуються лише цього пристрою: ключі, стан входу, голос браузера (на кожному свій).
+export const LOCAL_META = new Set([...SECRET_KEYS, 'syncToken', 'syncInfo', 'syncClientId', 'ttsVoice']);
+const isSynced = (store, obj) => SYNCED_STORES.includes(store) && !(store === 'meta' && LOCAL_META.has(obj?.key));
 
 // cards         — фрази з розкладом повторень по обох напрямках
 // sessions      — облік часу по чотирьох потоках (input / output / focus / fluency)
@@ -16,6 +25,7 @@ const DB_VERSION = 8;
 // tts           — кеш озвучених голосом Gemini фраз (Blob), щоб не витрачати ліміт повторно
 // retells       — сесії «Слухай і перекажи»: матеріал, фрагмент, позначки, переказ, розбір
 // channels      — збережені YouTube-канали й кеш списку їхніх відео
+// deleted       — сліди видалень ({store, key, ts}), щоб видалене на одному пристрої зникло й на іншому
 let dbPromise;
 
 function openDb() {
@@ -63,6 +73,9 @@ function openDb() {
       if (!db.objectStoreNames.contains('retells')) {
         db.createObjectStore('retells', { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains('deleted')) {
+        db.createObjectStore('deleted', { keyPath: 'id' });
+      }
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -94,12 +107,37 @@ async function tx(store, mode, fn) {
 
 export const getAll = (store) => tx(store, 'readonly', (s) => s.getAll());
 export const get = (store, id) => tx(store, 'readonly', (s) => s.get(id));
-export const put = (store, obj) => tx(store, 'readwrite', (s) => s.put(obj));
-export const del = (store, id) => tx(store, 'readwrite', (s) => s.delete(id));
+
+// Кожен синхронізований запис отримує час останньої зміни — за ним зливаються дані з різних пристроїв.
+const stamp = (store, obj) => (isSynced(store, obj) ? { ...obj, updated: Date.now() } : obj);
+const changed = (store) => {
+  if (SYNCED_STORES.includes(store)) window.dispatchEvent(new CustomEvent('db-change', { detail: { store } }));
+};
+
+export async function put(store, obj) {
+  const res = await tx(store, 'readwrite', (s) => s.put(stamp(store, obj)));
+  if (isSynced(store, obj)) changed(store);
+  return res;
+}
 
 export async function putMany(store, items) {
-  return tx(store, 'readwrite', (s) => { for (const it of items) s.put(it); });
+  const res = await tx(store, 'readwrite', (s) => { for (const it of items) s.put(stamp(store, it)); });
+  if (items.some((it) => isSynced(store, it))) changed(store);
+  return res;
 }
+
+export async function del(store, id) {
+  const res = await tx(store, 'readwrite', (s) => s.delete(id));
+  if (isSynced(store, { key: id })) {
+    await tx('deleted', 'readwrite', (s) => s.put({ id: `${store}|${id}`, store, key: id, ts: Date.now() }));
+    changed(store);
+  }
+  return res;
+}
+
+// «Сирі» операції для синхронізації: без нових міток часу й без подій про зміни.
+export const putRaw = (store, items) => tx(store, 'readwrite', (s) => { for (const it of items) s.put(it); });
+export const delRaw = (store, keys) => tx(store, 'readwrite', (s) => { for (const k of keys) s.delete(k); });
 
 export async function getSetting(key, fallback) {
   const row = await get('meta', key);
@@ -111,9 +149,6 @@ export const setSetting = (key, value) => put('meta', { key, value });
 export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-
-// Ключі API ніколи не потрапляють у бекап і не відновлюються з нього.
-const SECRET_KEYS = new Set(['apiKey', 'geminiKey', 'youtubeKey']);
 
 // Повний бекап у JSON; імпорт замінює записи з тими самими id і додає нові.
 export async function exportAll() {
@@ -134,7 +169,7 @@ export async function exportAll() {
     lessons,
     retells,
     channels,
-    meta: meta.filter((m) => !SECRET_KEYS.has(m.key)),
+    meta: meta.filter((m) => !LOCAL_META.has(m.key)),
   };
 }
 
@@ -149,6 +184,6 @@ export async function importAll(data) {
   await putMany('lessons', data.lessons || []);
   await putMany('retells', data.retells || []);
   await putMany('channels', data.channels || []);
-  await putMany('meta', (data.meta || []).filter((m) => !SECRET_KEYS.has(m.key)));
+  await putMany('meta', (data.meta || []).filter((m) => !LOCAL_META.has(m.key)));
   return { cards: (data.cards || []).length, sessions: (data.sessions || []).length };
 }

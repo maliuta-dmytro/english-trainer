@@ -1,5 +1,6 @@
-import { $$ } from './ui.js';
+import { $$, toast } from './ui.js';
 import { loadSpeechSettings } from './speech.js';
+import { initSync, syncNow } from './sync.js';
 import * as home from './views/home.js';
 import * as review from './views/review.js';
 import * as cards from './views/cards.js';
@@ -39,6 +40,28 @@ window.addEventListener('hashchange', render);
 window.addEventListener('pagehide', () => { if (cleanup) cleanup(); });
 loadSpeechSettings();
 render();
+
+// ---------- Синхронізація між пристроями ----------
+const syncBtn = document.getElementById('sync-btn');
+window.addEventListener('sync-state', ({ detail }) => {
+  syncBtn.hidden = detail.status === 'off';
+  syncBtn.dataset.state = detail.status;
+  syncBtn.title = detail.message || { syncing: 'Синхронізую…', idle: 'Синхронізовано', 'needs-login': 'Натисни, щоб увійти й синхронізувати' }[detail.status] || 'Синхронізація';
+});
+syncBtn.addEventListener('click', async () => {
+  try {
+    const res = await syncNow({ interactive: true });
+    if (!res.skipped) toast(res.changes ? `Синхронізовано: оновлено записів ${res.changes}` : 'Усе синхронізовано');
+  } catch (err) {
+    toast(err.message);
+  }
+});
+// Прийшли зміни з іншого пристрою — оновлюємо екран, якщо це не активна сесія (повторення, розмова, переказ…).
+window.addEventListener('synced', () => {
+  const inSession = /[?&]id=/.test(location.hash) || location.hash.startsWith('#/review');
+  if (!inSession) render();
+});
+initSync();
 
 // Просимо браузер не видаляти локальні дані при нестачі місця.
 navigator.storage?.persist?.();

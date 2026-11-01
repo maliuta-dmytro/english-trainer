@@ -91,6 +91,12 @@ p { margin: 0 0 .75em; }
 }
 .circle-btn:hover, .circle-btn.active { background: rgb(255 255 255 / .13); }
 .circle-btn svg { width: 18px; height: 18px; }
+.sync-btn { position: relative; padding: 0; }
+.sync-btn::after { content: ''; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+.sync-btn[data-state="idle"]::after { background: var(--good); }
+.sync-btn[data-state="needs-login"]::after { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.sync-btn[data-state="error"]::after { background: var(--bad); }
+.sync-btn[data-state="syncing"] svg { animation: blink 1s infinite; }
 
 /* Телефон: навігація переїжджає вниз у скляну панель вкладок */
 @media (max-width: 720px) {

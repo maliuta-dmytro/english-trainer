@@ -6,6 +6,7 @@ import {
   MODELS as GEMINI_MODELS, DEFAULT_MODEL as GEMINI_DEFAULT, TTS_VOICES as GEMINI_VOICES, DEFAULT_VOICE as GEMINI_VOICE,
 } from '../gemini.js';
 import { englishVoices, loadSpeechSettings, speak, canListen, getEngine } from '../speech.js';
+import { syncNow, disableSync } from '../sync.js';
 
 const modelOptions = (models, selected) => models
   .map((m) => `<option value="${m.id}"${m.id === selected ? ' selected' : ''}>${esc(m.label)}</option>`).join('');
@@ -17,9 +18,9 @@ export async function render(root) {
     getSetting('model', CLAUDE_DEFAULT), getSetting('provider', 'claude'), getSetting('geminiKey', ''),
     getSetting('geminiModel', GEMINI_DEFAULT),
   ]);
-  const [ttsVoice, ttsRate, ttsEngine, geminiVoice, youtubeKey] = await Promise.all([
+  const [ttsVoice, ttsRate, ttsEngine, geminiVoice, youtubeKey, syncClientId, syncInfo] = await Promise.all([
     getSetting('ttsVoice', ''), getSetting('ttsRate', 1), getSetting('ttsEngine', 'browser'), getSetting('geminiVoice', GEMINI_VOICE),
-    getSetting('youtubeKey', ''),
+    getSetting('youtubeKey', ''), getSetting('syncClientId', ''), getSetting('syncInfo', null),
   ]);
   const persisted = (await navigator.storage?.persisted?.()) ?? false;
 
@@ -93,6 +94,31 @@ export async function render(root) {
           <div class="muted small">Типова розмова з розбором на Opus коштує орієнтовно кілька центів, на Sonnet приблизно вдвічі менше. Точну вартість видно в історії розмов.</div></div>
       </div>
       <button type="submit" class="primary">Зберегти</button>
+    </form>
+
+    <form class="card" id="sync">
+      <h2>Синхронізація між пристроями <span class="tag">Google Drive</span></h2>
+      <p class="small">Картки, журнал, розмови, перекази й статистика зберігаються в прихованій службовій папці твого Google Drive, яку бачить лише цей застосунок. Так на телефоні й комп'ютері та сама інформація. Ключі API й медіафайли не синхронізуються: їх додаєш на кожному пристрої.</p>
+      <details class="small" ${syncClientId ? '' : 'open'}><summary>Як отримати OAuth Client ID (один раз, ~5 хв)</summary>
+        <ol class="steps" style="margin-top:8px">
+          <li>У <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Cloud Console</a> (той самий проєкт, що й для YouTube) увімкни <strong>Google Drive API</strong> → Enable.</li>
+          <li>Відкрий <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">Google Auth Platform</a> → <strong>Get started</strong>: назва застосунку «English Trainer», твоя пошта, тип аудиторії <strong>External</strong>.</li>
+          <li>У розділі <strong>Audience</strong> → <strong>Test users</strong> додай свою Gmail-адресу.</li>
+          <li><strong>Clients</strong> → <strong>Create client</strong> → тип <strong>Web application</strong> → <em>Authorized JavaScript origins</em>: <code>${esc(location.origin)}</code>.</li>
+          <li>Скопіюй <strong>Client ID</strong> (закінчується на <code>.apps.googleusercontent.com</code>) і встав нижче.</li>
+        </ol>
+        <p class="muted">Під час першого входу Google попередить, що застосунок не перевірений: для особистого інструмента це нормально, натисни «Продовжити».</p>
+      </details>
+      <div class="field" style="margin-top:12px"><label for="s-client">OAuth Client ID</label>
+        <input type="text" id="s-client" placeholder="1234567890-abc….apps.googleusercontent.com" value="${esc(syncClientId)}" autocomplete="off" spellcheck="false"></div>
+      <p class="small" id="sync-status">${syncInfo?.enabled
+        ? `✓ Увімкнено${syncInfo.email ? ` · ${esc(syncInfo.email)}` : ''}${syncInfo.lastSync ? ` · востаннє ${new Date(syncInfo.lastSync).toLocaleString('uk-UA', { dateStyle: 'short', timeStyle: 'short' })}` : ''}`
+        : '<span class="muted">Синхронізацію вимкнено.</span>'}</p>
+      <div class="row">
+        <button type="submit" class="primary">${syncInfo?.enabled ? '⟳ Синхронізувати зараз' : 'Увійти з Google і синхронізувати'}</button>
+        ${syncInfo?.enabled ? '<button type="button" id="sync-off" class="ghost danger">Вимкнути</button>' : ''}
+      </div>
+      <p class="muted small" style="margin:10px 0 0">Поки вхід дійсний (близько години), синхронізація йде сама: при відкритті й після змін. Коли вхід спливе, на значку хмари вгорі з'явиться позначка: одне натискання — і все знову синхронно.</p>
     </form>
 
     <form class="card" id="yt">
@@ -190,6 +216,30 @@ export async function render(root) {
     if ($('#s-gkey').value.trim() && (await getSetting('ttsEngine', null)) === null) await setSetting('ttsEngine', 'gemini');
     await loadSpeechSettings();
     toast(`Збережено. Працюємо з ${chosen === 'gemini' ? 'Gemini' : 'Claude'}`);
+    render(root);
+  });
+
+  $('#sync').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const clientId = $('#s-client').value.trim();
+    if (!/\.apps\.googleusercontent\.com$/.test(clientId)) { toast('Client ID має закінчуватися на .apps.googleusercontent.com'); return; }
+    await setSetting('syncClientId', clientId);
+    const btn = e.submitter || $('#sync button[type=submit]');
+    btn.disabled = true;
+    $('#sync-status').textContent = 'Синхронізую…';
+    try {
+      const res = await syncNow({ interactive: true });
+      toast(res.changes ? `Синхронізовано: оновлено записів ${res.changes}` : 'Синхронізовано');
+      render(root);
+    } catch (err) {
+      $('#sync-status').textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+  $('#sync-off')?.addEventListener('click', async () => {
+    if (!confirm('Вимкнути синхронізацію на цьому пристрої? Дані тут і в Google Drive залишаться.')) return;
+    await disableSync();
+    toast('Синхронізацію вимкнено');
     render(root);
   });
 
