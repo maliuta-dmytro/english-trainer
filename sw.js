@@ -1,5 +1,5 @@
 // Service worker: network-first, щоб оновлення підтягувались одразу, а офлайн працював кеш.
-const CACHE = 'english-trainer-v11';
+const CACHE = 'english-trainer-v12';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg',
   'js/app.js', 'js/db.js', 'js/srs.js', 'js/diff.js', 'js/ui.js', 'js/stats.js', 'js/speech.js', 'js/starter.js',
@@ -8,8 +8,14 @@ const SHELL = [
   'js/views/talk.js', 'js/views/journal.js', 'js/views/progress.js',
 ];
 
+// GitHub Pages віддає файли з Cache-Control: max-age=600, тож без цього браузер до 10 хвилин
+// підсовує старі модулі навіть «з мережі». 'reload' / 'no-cache' змушують звіритися з сервером (ETag → 304).
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -24,7 +30,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(req)
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
