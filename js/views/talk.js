@@ -1,5 +1,5 @@
 import { getAll, get, put, getSetting, setSetting, uid } from '../db.js';
-import { streamReply, structured, costOf, MODELS, DEFAULT_MODEL } from '../claude.js';
+import { streamReply, structured, costOf, hasKey, currentModel, NO_KEY_HTML } from '../ai.js';
 import { SCENARIOS, GROUPS, LEVELS, customScenario } from '../scenarios.js';
 import {
   systemPrompt, START_MESSAGE, ANALYSIS_SYSTEM, ANALYSIS_SCHEMA,
@@ -25,15 +25,15 @@ export async function render(root) {
 
 async function renderPicker(root) {
   const [apiKey, level, hints, model, focus, history] = await Promise.all([
-    getSetting('apiKey', ''), getSetting('talkLevel', 'B2'), getSetting('talkHints', true),
-    getSetting('model', DEFAULT_MODEL), focusTopics(), getAll('conversations'),
+    hasKey(), getSetting('talkLevel', 'B2'), getSetting('talkHints', true),
+    currentModel(), focusTopics(), getAll('conversations'),
   ]);
   history.sort((a, b) => b.created - a.created);
-  const modelLabel = (MODELS.find((m) => m.id === model) || MODELS[0]).label.split(' — ')[0];
+  const modelLabel = model.label.split(' — ')[0];
 
   root.innerHTML = `
     <h1>Розмова з ШІ</h1>
-    ${apiKey ? '' : `<div class="card notice">Щоб говорити з ШІ, потрібен ключ Claude API. <a href="#/settings">Додати ключ у налаштуваннях →</a></div>`}
+    ${apiKey ? '' : `<div class="card notice">${NO_KEY_HTML}</div>`}
 
     <div class="card">
       <div class="row">
@@ -108,7 +108,7 @@ export async function startConversation(scenario, { level, hints, twist = false,
     twist,
     trip,
     focus: await focusTopics(),
-    model: await getSetting('model', DEFAULT_MODEL),
+    model: (await currentModel()).id,
     status: 'active',
     messages: [{ role: 'user', text: START_MESSAGE, hidden: true }],
     usage: {},

@@ -1,6 +1,6 @@
 // Граматичні міні-уроки у форматі focus on form: тема — з журналу помилок, приклади — власні помилки учня.
 import { getAll } from './db.js';
-import { structured } from './claude.js';
+import { structured } from './ai.js';
 import { FOCUS_EN } from './coach.js';
 
 // Пріоритетні граматичні теми з брифу (у порядку важливості для україномовних на B2).

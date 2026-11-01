@@ -4,6 +4,7 @@ import {
 } from '../dictation.js';
 import { LEVELS } from '../scenarios.js';
 import { situationById } from '../trip.js';
+import { hasKey, NO_KEY_HTML } from '../ai.js';
 import { logMinutes, makeCard } from '../stats.js';
 import { speak, stopSpeaking, canSpeak, getRate } from '../speech.js';
 import { esc, $, $$, toast } from '../ui.js';
@@ -33,7 +34,7 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 // ---------- Список і створення ----------
 
 async function renderList(root) {
-  const [list, apiKey, level] = await Promise.all([getAll('dictations'), getSetting('apiKey', ''), getSetting('talkLevel', 'B2')]);
+  const [list, apiKey, level] = await Promise.all([getAll('dictations'), hasKey(), getSetting('talkLevel', 'B2')]);
   // Перехід із туристичного режиму: #/dictation?trip=hotel — тема ситуації вже підставлена.
   const trip = situationById(new URLSearchParams(location.hash.split('?')[1] || '').get('trip'));
   list.sort((a, b) => b.created - a.created);
@@ -54,7 +55,7 @@ async function renderList(root) {
 
       <form id="f-ai">
         <p class="muted small" style="margin-top:0">Claude пише живий текст на твою тему, а браузер його озвучує. Найшвидший старт, але синтетичний голос звучить рівніше за живу людину, тож для справжнього темпу краще брати свої файли.</p>
-        ${apiKey ? '' : '<p class="notice card small" style="padding:10px 14px">Потрібен ключ Claude API. <a href="#/settings">Додати →</a></p>'}
+        ${apiKey ? '' : `<p class="notice card small" style="padding:10px 14px">${NO_KEY_HTML}</p>`}
         ${trip ? `<p class="small">🧳 Диктант для ситуації «${trip.icon} ${esc(trip.title)}» з туристичного режиму.</p>` : ''}
         <div class="field"><label for="ai-topic">Тема</label><input type="text" id="ai-topic" placeholder="${esc(TOPICS[0])}" value="${trip ? esc(trip.dictation) : ''}"></div>
         <div class="row" style="margin:-4px 0 12px">${TOPICS.slice(1, 6).map((t) => `<button type="button" class="icon-btn chip small" data-topic="${esc(t)}">${esc(t)}</button>`).join('')}</div>
@@ -274,7 +275,7 @@ const missingMedia = (d) => `
 async function renderSession(root, d) {
   const player = d.source === 'file' ? await mediaPlayer(d) : null;
   if (d.source === 'file' && !player) { root.innerHTML = missingMedia(d); return; }
-  const apiKey = await getSetting('apiKey', '');
+  const apiKey = await hasKey();
   let pos = Math.min(d.pos || 0, d.segments.length);
   let phase = 'listen'; // listen → checked
   let slow = false;

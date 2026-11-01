@@ -1,6 +1,6 @@
 // Логіка диктанту: субтитри → фрагменти, речення, порівняння з урахуванням розмовних форм, генерація тексту.
 import { diffWords } from './diff.js';
-import { structured } from './claude.js';
+import { structured } from './ai.js';
 
 const MIN_SEG = 4;   // с — коротші репліки зливаємо з сусідніми
 const MAX_SEG = 15;  // с — довші не зливаємо далі

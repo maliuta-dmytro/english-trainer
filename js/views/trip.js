@@ -3,6 +3,7 @@ import { SITUATIONS } from '../trip.js';
 import { SCENARIOS } from '../scenarios.js';
 import { makeCard } from '../stats.js';
 import { startConversation } from './talk.js';
+import { hasKey } from '../ai.js';
 import { speak, canSpeak } from '../speech.js';
 import { esc, $, $$, toast } from '../ui.js';
 
@@ -18,7 +19,7 @@ function readiness(s, { convs, known, dictations }) {
 export async function render(root) {
   const [convs, cards, dictations, tripDate, apiKey, reverse] = await Promise.all([
     getAll('conversations'), getAll('cards'), getAll('dictations'),
-    getSetting('tripDate', '2027-09-01'), getSetting('apiKey', ''), getSetting('reverseDefault', true),
+    getSetting('tripDate', '2027-09-01'), hasKey(), getSetting('reverseDefault', true),
   ]);
   const known = new Set(cards.map((c) => c.en.trim().toLowerCase()));
   const ctx = { convs, known, dictations };
@@ -41,7 +42,7 @@ export async function render(root) {
       <p class="muted small" style="margin:8px 0 0">По кожній ситуації: 🎭 розмова з розбором, 📒 фрази в картках, 🎧 диктант на тему.</p>
       <div class="row" style="margin-top:10px">
         <button class="primary" id="random" ${apiKey ? '' : 'disabled'}>⚡ Випадкова ситуація зі складністю</button>
-        ${apiKey ? '' : '<a href="#/settings" class="small">Потрібен ключ Claude API →</a>'}
+        ${apiKey ? '' : '<a href="#/settings" class="small">Потрібен ключ ШІ (Claude або Gemini) →</a>'}
       </div>
     </div>
 

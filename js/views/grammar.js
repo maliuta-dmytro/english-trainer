@@ -1,6 +1,6 @@
 import { getAll, get, put, del, getSetting, setSetting, uid } from '../db.js';
 import { GRAMMAR_TOPICS, EXERCISES, errorsByTopic, generateLesson, checkAnswers } from '../grammar.js';
-import { costOf } from '../claude.js';
+import { costOf, hasKey, NO_KEY_HTML } from '../ai.js';
 import { logMinutes, makeCard } from '../stats.js';
 import { speak, canSpeak } from '../speech.js';
 import { esc, $, $$, toast, tagLabel, plural, ERRORS_WORD } from '../ui.js';
@@ -28,7 +28,7 @@ export async function recommendedTopic() {
 
 async function renderPicker(root) {
   const [byTopic, lessons, apiKey, level, auto, focus] = await Promise.all([
-    errorsByTopic(), getAll('lessons'), getSetting('apiKey', ''), getSetting('talkLevel', 'B2'), recommendedTopic(), getSetting('lessonFocus', null),
+    errorsByTopic(), getAll('lessons'), hasKey(), getSetting('talkLevel', 'B2'), recommendedTopic(), getSetting('lessonFocus', null),
   ]);
   // Перехід із журналу: #/grammar?topic=articles — ця тема стає рекомендованою.
   const asked = new URLSearchParams(location.hash.split('?')[1] || '').get('topic');
@@ -39,7 +39,7 @@ async function renderPicker(root) {
   root.innerHTML = `
     <h1>Граматика</h1>
     <p class="muted">Короткий урок на 15 хвилин під тему, де в тебе найбільше помилок: пояснення, твої власні помилки з розмов і ${EXERCISES} речень, які ти складаєш сам. Неправильні відповіді стають картками, а тема тиждень буде фокусом у розмовах з ШІ.</p>
-    ${apiKey ? '' : '<div class="card notice">Для уроків потрібен ключ Claude API. <a href="#/settings">Додати →</a></div>'}
+    ${apiKey ? '' : `<div class="card notice">${NO_KEY_HTML}</div>`}
     ${focus && focus.until > Date.now() ? `<p class="small">🎯 Зараз у фокусі розмов: <strong>${esc(tagLabel(focus.category))}</strong> (до ${new Date(focus.until).toLocaleDateString('uk-UA')}).</p>` : ''}
 
     <div class="card recommend">

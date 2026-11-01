@@ -95,13 +95,3 @@ export async function structured({ system, prompt, schema, effort = 'medium' }) 
     throw friendlyError(Anthropic, err);
   }
 }
-
-// Приблизна вартість у доларах за даними usage.
-export function costOf(usage, modelId) {
-  const p = (MODELS.find((m) => m.id === modelId) || MODELS[0]).price;
-  if (!usage) return 0;
-  return ((usage.input_tokens || 0) * p.in
-    + (usage.output_tokens || 0) * p.out
-    + (usage.cache_read_input_tokens || 0) * p.cacheRead
-    + (usage.cache_creation_input_tokens || 0) * p.cacheWrite) / 1e6;
-}

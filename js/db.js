@@ -1,6 +1,6 @@
 // Тонка обгортка над IndexedDB. Усі дані живуть локально в браузері.
 const DB_NAME = 'english-trainer';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // cards         — фрази з розкладом повторень по обох напрямках
 // sessions      — облік часу по чотирьох потоках (input / output / focus / fluency)
@@ -11,6 +11,7 @@ const DB_VERSION = 5;
 // media         — аудіо/відео для диктантів і записи 4/3/2 (Blob), окремо, щоб списки читались швидко
 // fluency       — сесії 4/3/2: тема, раунди, слова за хвилину
 // lessons       — граматичні міні-уроки: зміст, відповіді, перевірка
+// tts           — кеш озвучених голосом Gemini фраз (Blob), щоб не витрачати ліміт повторно
 let dbPromise;
 
 function openDb() {
@@ -48,6 +49,9 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains('lessons')) {
         db.createObjectStore('lessons', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('tts')) {
+        db.createObjectStore('tts', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -87,6 +91,9 @@ export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Ключі API ніколи не потрапляють у бекап і не відновлюються з нього.
+const SECRET_KEYS = new Set(['apiKey', 'geminiKey']);
+
 // Повний бекап у JSON; імпорт замінює записи з тими самими id і додає нові.
 export async function exportAll() {
   // Медіафайли в бекап не потрапляють (завеликі) — після відновлення їх додають знову.
@@ -104,7 +111,7 @@ export async function exportAll() {
     dictations,
     fluency,
     lessons,
-    meta: meta.filter((m) => m.key !== 'apiKey'),
+    meta: meta.filter((m) => !SECRET_KEYS.has(m.key)),
   };
 }
 
@@ -117,6 +124,6 @@ export async function importAll(data) {
   await putMany('dictations', data.dictations || []);
   await putMany('fluency', data.fluency || []);
   await putMany('lessons', data.lessons || []);
-  await putMany('meta', (data.meta || []).filter((m) => m.key !== 'apiKey'));
+  await putMany('meta', (data.meta || []).filter((m) => !SECRET_KEYS.has(m.key)));
   return { cards: (data.cards || []).length, sessions: (data.sessions || []).length };
 }

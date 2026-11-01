@@ -1,10 +1,21 @@
-// Мовлення через браузер: синтез (американські голоси) і розпізнавання (Web Speech API).
+// Мовлення: синтез (природні голоси Gemini або голоси браузера) і розпізнавання (Web Speech API).
 // Розпізнавання повноцінно працює в Chrome і Edge; аудіо обробляє сервіс розпізнавання браузера.
-import { getSetting } from './db.js';
+import { getSetting, get, put, getAll, del } from './db.js';
+import { synthesize, DEFAULT_VOICE } from './gemini.js';
+import { toast } from './ui.js';
 
 let voice;
 let voiceName = '';
 let rate = 1;
+let engine = 'browser';          // 'browser' | 'gemini'
+let geminiVoice = DEFAULT_VOICE;
+let geminiDownUntil = 0;         // після помилки Gemini хвилину озвучуємо голосом браузера
+let playToken = 0;               // зростає при зупинці — скасовує все, що ще в черзі
+const audioEl = typeof Audio !== 'undefined' ? new Audio() : null;
+if (audioEl) audioEl.preservesPitch = true;
+
+const TTS_CACHE_MAX = 400;
+let ttsWrites = 0;
 
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
@@ -18,13 +29,68 @@ if ('speechSynthesis' in window) {
   speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
 }
 
-export const canSpeak = () => 'speechSynthesis' in window;
+const hasBrowserVoice = () => 'speechSynthesis' in window;
+export const canSpeak = () => hasBrowserVoice() || engine === 'gemini';
 
 // Читає налаштування голосу й темпу; викликається на старті та після збереження налаштувань.
 export async function loadSpeechSettings() {
   voiceName = await getSetting('ttsVoice', '');
   rate = await getSetting('ttsRate', 1);
-  if (canSpeak()) pickVoice();
+  geminiVoice = await getSetting('geminiVoice', DEFAULT_VOICE);
+  engine = (await getSetting('ttsEngine', 'browser')) === 'gemini' && (await getSetting('geminiKey', '')) ? 'gemini' : 'browser';
+  geminiDownUntil = 0;
+  if (hasBrowserVoice()) pickVoice();
+}
+
+export const getEngine = () => engine;
+const useGemini = () => engine === 'gemini' && Date.now() > geminiDownUntil;
+
+function geminiFailed(err) {
+  geminiDownUntil = Date.now() + 60_000;
+  toast(`Голос Gemini тимчасово недоступний: ${err.message} Поки що звучить голос браузера.`);
+}
+
+// Озвучена фраза береться з кешу; нова — синтезується й зберігається, щоб не витрачати ліміт повторно.
+async function geminiAudio(text) {
+  const id = `${geminiVoice}|${text}`;
+  const cached = await get('tts', id).catch(() => null);
+  if (cached) return cached.blob;
+  const blob = await synthesize(text, geminiVoice);
+  put('tts', { id, blob, ts: Date.now() }).then(() => { if (++ttsWrites % 25 === 0) pruneTtsCache(); }).catch(() => {});
+  return blob;
+}
+
+async function pruneTtsCache() {
+  const all = await getAll('tts');
+  if (all.length <= TTS_CACHE_MAX) return;
+  all.sort((a, b) => a.ts - b.ts);
+  for (const row of all.slice(0, all.length - TTS_CACHE_MAX)) await del('tts', row.id);
+}
+
+// Програє Blob; завершується, коли аудіо дограло або озвучення зупинили.
+function playBlob(blob, r, token) {
+  return new Promise((resolve) => {
+    if (token !== playToken || !audioEl) { resolve(); return; }
+    const url = URL.createObjectURL(blob);
+    const done = () => { URL.revokeObjectURL(url); resolve(); };
+    audioEl.onended = done;
+    audioEl.onerror = done;
+    audioEl.onpause = () => { if (token !== playToken) done(); };
+    audioEl.src = url;
+    audioEl.playbackRate = r;
+    audioEl.play().catch(done);
+  });
+}
+
+// Голос браузера, що чекає на кінець фрази (для черги речень).
+function browserSay(text, r, token) {
+  return new Promise((resolve) => {
+    if (token !== playToken || !hasBrowserVoice()) { resolve(); return; }
+    const u = utterance(text, r);
+    u.onend = resolve;
+    u.onerror = resolve;
+    speechSynthesis.speak(u);
+  });
 }
 
 export const getRate = () => rate;
@@ -47,12 +113,21 @@ function utterance(text, r = rate) {
 
 export function speak(text, r = rate) {
   if (!canSpeak()) return;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utterance(text, r));
+  stopSpeaking();
+  const token = playToken;
+  if (useGemini()) {
+    geminiAudio(text)
+      .then((blob) => playBlob(blob, r, token))
+      .catch((err) => { geminiFailed(err); browserSay(text, r, token); });
+    return;
+  }
+  browserSay(text, r, token);
 }
 
 export function stopSpeaking() {
-  if (canSpeak()) speechSynthesis.cancel();
+  playToken++;
+  if (audioEl && !audioEl.paused) audioEl.pause();
+  if (hasBrowserVoice()) speechSynthesis.cancel();
 }
 
 /**
@@ -61,20 +136,30 @@ export function stopSpeaking() {
  */
 export function createSpeaker() {
   let buffer = '';
-  let stopped = !canSpeak();
+  let closed = !canSpeak();      // більше не приймаємо текст (кінець відповіді або підказка 💡)
+  const token = playToken;
+  let queue = Promise.resolve(); // речення звучать строго по черзі
   const say = (chunk) => {
     const t = chunk.trim();
-    if (t && !stopped) speechSynthesis.speak(utterance(t));
+    if (!t || closed) return;
+    // Синтез наступного речення стартує одразу, поки попереднє ще звучить.
+    const audio = useGemini() ? geminiAudio(t).catch((err) => { geminiFailed(err); return null; }) : Promise.resolve(null);
+    queue = queue.then(async () => {
+      const blob = await audio;
+      if (token !== playToken) return;
+      if (blob) await playBlob(blob, rate, token);
+      else await browserSay(t, rate, token);
+    });
   };
   return {
     feed(delta) {
-      if (stopped) return;
+      if (closed) return;
       buffer += delta;
       const hintAt = buffer.indexOf('💡');
       if (hintAt !== -1) {
         say(buffer.slice(0, hintAt));
         buffer = '';
-        stopped = true;
+        closed = true;
         return;
       }
       // Відрізаємо завершені речення: знак кінця речення + пробіл або новий рядок.
@@ -87,10 +172,10 @@ export function createSpeaker() {
     finish() {
       say(buffer);
       buffer = '';
-      stopped = true;
+      closed = true;
     },
     cancel() {
-      stopped = true;
+      closed = true;
       stopSpeaking();
     },
   };
