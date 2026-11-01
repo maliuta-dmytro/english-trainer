@@ -20,7 +20,7 @@ export const MANUAL_ACTIVITIES = [
   { id: 'shadowing', stream: 'fluency', label: 'Shadowing / швидке читання' },
 ];
 export const activityLabel = (id) => MANUAL_ACTIVITIES.find((a) => a.id === id)?.label
-  ?? { srs: 'Картки', conversation: 'Розмова з ШІ', dictation: 'Диктант', fluency: 'Fluency 4/3/2', grammar: 'Граматичний урок' }[id] ?? id;
+  ?? { srs: 'Картки', conversation: 'Розмова з ШІ', dictation: 'Диктант', fluency: 'Fluency 4/3/2', grammar: 'Граматичний урок', retell: 'Слухай і перекажи' }[id] ?? id;
 
 // Мета брифу: 200–300 годин активної практики для B2 → C1.
 export const GOAL_HOURS = 250;

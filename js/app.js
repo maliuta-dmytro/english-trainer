@@ -11,8 +11,11 @@ import * as dictation from './views/dictation.js';
 import * as fluency from './views/fluency.js';
 import * as grammar from './views/grammar.js';
 import * as trip from './views/trip.js';
+import * as retell from './views/retell.js';
 
-const routes = { '': home, home, review, cards, settings, talk, journal, progress, dictation, fluency, grammar, trip };
+const routes = { '': home, home, review, cards, settings, talk, journal, progress, dictation, fluency, grammar, trip, retell };
+// Підрозділи, що підсвічують свій пункт меню.
+const NAV_PARENT = { dictation: 'retell', fluency: 'talk', trip: 'talk', review: 'cards', journal: 'progress', grammar: 'progress' };
 const app = document.getElementById('app');
 let cleanup = null;
 let renderId = 0;
@@ -22,7 +25,8 @@ async function render() {
   const view = routes[name] || home;
   const id = ++renderId;
   if (cleanup) { const c = cleanup; cleanup = null; await c(); }
-  $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === (name || 'home')));
+  const navName = NAV_PARENT[name] || name || 'home';
+  $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === navName));
   app.innerHTML = '';
   const c = await view.render(app);
   if (id === renderId) cleanup = c || null;

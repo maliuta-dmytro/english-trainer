@@ -5,7 +5,7 @@ import {
 } from '../stats.js';
 import { stackedColumns, columns, legend } from '../charts.js';
 import { statTile } from '../icons.js';
-import { weeklyRates, fmt, trend } from './journal.js';
+import { weeklyRates, wordSources, fmt, trend } from './journal.js';
 import { esc, $, tagLabel } from '../ui.js';
 
 const WEEKDAYS = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
@@ -44,7 +44,7 @@ export async function render(root) {
   const forecast = dueForecast(cards);
   const reviewsTotal = cards.reduce((n, c) => n + directions(c).length, 0);
 
-  const errStats = weeklyRates(errors, convs.filter((c) => c.analysis));
+  const errStats = weeklyRates(errors, await wordSources());
   const weekShares = STREAMS.map((s) => ({ ...s, min: week[s.id], pct: weekTotal ? (week[s.id] / weekTotal) * 100 : 0 }));
   const weakest = [...weekShares].sort((a, b) => a.pct - b.pct)[0];
   const delta = weekTotal - prevTotal;

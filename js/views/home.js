@@ -11,14 +11,15 @@ import { esc, $, $$, toast, tagLabel, plural, ERRORS_WORD } from '../ui.js';
 // Денні плани з брифу; хвилини орієнтовні. [назва, хвилини, потік, дія]
 const PLANS = {
   20: [['SRS-картки', 7, 'focus', 'review'], ['Диктант', 6, 'input', 'dictation'], ['Говоріння з ШІ', 7, 'output', 'talk']],
-  40: [['SRS-картки', 10, 'focus', 'review'], ['Диктант (інтенсивне слухання)', 10, 'input', 'dictation'], ['Говоріння з ШІ', 12, 'output', 'talk'], ['Серіал / подкаст', 8, 'input', 'log']],
-  60: [['SRS-картки', 10, 'focus', 'review'], ['Диктант (інтенсивне слухання)', 15, 'input', 'dictation'], ['Серіал / подкаст', 15, 'input', 'log'], ['Говоріння з ШІ', 15, 'output', 'talk'], ['Fluency 4/3/2 (коротко)', 5, 'fluency', 'fluency']],
+  40: [['SRS-картки', 10, 'focus', 'review'], ['Слухай і перекажи (або диктант)', 10, 'input', 'retell'], ['Говоріння з ШІ', 12, 'output', 'talk'], ['Серіал / подкаст', 8, 'input', 'log']],
+  60: [['SRS-картки', 10, 'focus', 'review'], ['Слухай і перекажи', 15, 'input', 'retell'], ['Серіал / подкаст', 15, 'input', 'log'], ['Говоріння з ШІ', 15, 'output', 'talk'], ['Fluency 4/3/2 (коротко)', 5, 'fluency', 'fluency']],
 };
 
 const ACTIONS = {
   review: '<a class="btn icon-btn" href="#/review">Почати</a>',
   talk: '<a class="btn icon-btn" href="#/talk">Почати</a>',
   dictation: '<a class="btn icon-btn" href="#/dictation">Почати</a>',
+  retell: '<a class="btn icon-btn" href="#/retell">Почати</a>',
   fluency: '<a class="btn icon-btn" href="#/fluency">Почати</a>',
   log: '<button class="icon-btn" data-goto-log>Записати</button>',
 };
@@ -28,6 +29,7 @@ const MODULES = [
   { href: '#/talk', title: 'Розмова з ШІ', desc: 'Рольові діалоги, підказки для самовиправлення, розбір', ready: true },
   { href: '#/journal', title: 'Журнал помилок', desc: 'Помилки за категоріями → автокартки', ready: true },
   { href: '#/progress', title: 'Прогрес', desc: 'Чотири потоки, години до мети, прогноз повторень', ready: true },
+  { href: '#/retell', title: '🎧 Слухай і перекажи', desc: 'Подкаст чи відео → переказ → розбір змісту й мови → картки', ready: true },
   { href: '#/dictation', title: 'Диктант', desc: 'Інтенсивне слухання з підсвіткою розбіжностей', ready: true },
   { href: '#/fluency', title: 'Fluency 4/3/2', desc: 'Та сама історія за 4, 3 і 2 хвилини, із записом голосу', ready: true },
   { href: '#/grammar', title: 'Граматичні міні-уроки', desc: 'Під найчастіші помилки з журналу', ready: true },

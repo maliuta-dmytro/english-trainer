@@ -8,6 +8,12 @@ const WEEK = 7 * 86_400_000;
 const WEEKS = 4;
 
 // Частота помилок на 100 слів — чесніша метрика, ніж кількість: більше практики дає більше помилок.
+// Розібрані тексти учня (розмови й перекази) — з них береться кількість слів для частоти помилок.
+export async function wordSources() {
+  const [convs, retells] = await Promise.all([getAll('conversations'), getAll('retells')]);
+  return [...convs.filter((c) => c.analysis), ...retells.filter((r) => r.feedback).map((r) => ({ created: r.created, userWords: r.userWords }))];
+}
+
 export function weeklyRates(errors, convs, now = Date.now()) {
   const words = new Array(WEEKS).fill(0);
   for (const c of convs) {
@@ -44,10 +50,10 @@ export function trend(rates) {
 
 export async function render(root) {
   let filter = '';
-  const [errors, convs] = await Promise.all([getAll('errors'), getAll('conversations')]);
+  const [errors, sources] = await Promise.all([getAll('errors'), wordSources()]);
   errors.sort((a, b) => b.ts - a.ts);
-  const analyzed = convs.filter((c) => c.analysis);
-  const stats = weeklyRates(errors, analyzed);
+  const analyzed = sources;
+  const stats = weeklyRates(errors, sources);
 
   if (!errors.length) {
     root.innerHTML = `
@@ -64,7 +70,7 @@ export async function render(root) {
   root.innerHTML = `
     <h1>Журнал помилок</h1>
     <div class="grid grid-3" style="margin-bottom:16px">
-      ${statTile('book', errors.length, `помилок у журналі · розмов: ${analyzed.length}`)}
+      ${statTile('book', errors.length, `помилок у журналі · розборів: ${analyzed.length}`)}
       ${statTile('trend', `${fmt(stats.total[0])} ${trend(stats.total)}`, `помилок на 100 слів за 7 днів (тиждень тому: ${fmt(stats.total[1])})`)}
       ${statTile('alert', `<span style="font-size:1.15rem">${top ? esc(tagLabel(top.cat)) : '—'}</span>`, 'найчастіша тема за 4 тижні')}
     </div>
@@ -110,7 +116,7 @@ export async function render(root) {
           <span>${esc(e.explanation)}</span>
           <span class="tag">${esc(tagLabel(e.category))}</span>
           <span>${new Date(e.ts).toLocaleDateString('uk-UA')}</span>
-          <a href="#/talk?id=${e.convId}">розмова</a>
+          ${e.retellId ? `<a href="#/retell?id=${e.retellId}">переказ</a>` : `<a href="#/talk?id=${e.convId}">розмова</a>`}
           ${(e.cardId && cards.has(e.cardId)) || known.has(e.corrected.trim().toLowerCase())
             ? '<span class="tag">у картках</span>'
             : `<button class="icon-btn" data-card="${e.id}">+ у картки</button>`}

@@ -168,6 +168,133 @@ export async function synthesize(text, voice = DEFAULT_VOICE) {
   return base64ToBlob(audio.data, audio.mime_type || 'audio/wav');
 }
 
+// ---------- Транскрипція аудіо, відео й YouTube ----------
+
+const INLINE_MAX = 14 * 1024 * 1024; // base64 додає третину, а ліміт запиту 20 МБ
+const UPLOAD_ENDPOINT = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
+
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result).split(',')[1]);
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(blob);
+});
+
+// Великі файли — через Files API (resumable upload). Google видаляє їх сам через 48 годин.
+async function uploadFile(blob, mime) {
+  const { key } = await setup();
+  let start;
+  try {
+    start = await fetch(UPLOAD_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': key,
+        'X-Goog-Upload-Protocol': 'resumable',
+        'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(blob.size),
+        'X-Goog-Upload-Header-Content-Type': mime,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file: { display_name: 'english-trainer-audio' } }),
+    });
+  } catch {
+    throw new AIError('Не вдалося почати завантаження файлу в Gemini. Перевір інтернет.');
+  }
+  if (!start.ok) {
+    const data = await start.json().catch(() => ({}));
+    throw friendlyError(start.status, (Array.isArray(data) ? data[0] : data)?.error);
+  }
+  const url = start.headers.get('x-goog-upload-url');
+  if (!url) throw new AIError('Браузер не отримав адресу для завантаження великого файлу. Візьми коротший файл (до 14 МБ) або додай субтитри.');
+  const up = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' },
+    body: blob,
+  });
+  if (!up.ok) throw friendlyError(up.status, (await up.json().catch(() => ({})))?.error);
+  let file = (await up.json()).file;
+  // Відео й довгі файли якийсь час обробляються — чекаємо стану ACTIVE.
+  for (let i = 0; file?.state === 'PROCESSING' && i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${file.name}`, { headers: { 'x-goog-api-key': key } });
+    file = await res.json();
+  }
+  if (!file?.uri || file.state === 'FAILED') throw new AIError('Gemini не зміг обробити файл.');
+  return file;
+}
+
+// «MM:SS», «H:MM:SS» або «MM:SS.s» → секунди.
+export function parseTimecode(s) {
+  const parts = String(s).trim().split(':').map(Number);
+  if (parts.some((n) => Number.isNaN(n))) return null;
+  return parts.reduce((acc, n) => acc * 60 + n, 0);
+}
+
+export const timecode = (sec) => {
+  const s = Math.max(0, Math.floor(sec));
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(h ? 2 : 1, '0');
+  return `${h ? `${h}:` : ''}${mm}:${String(s % 60).padStart(2, '0')}`;
+};
+
+const TRANSCRIPT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['segments'],
+  properties: {
+    segments: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['start', 'end', 'text'],
+        properties: {
+          start: { type: 'string', description: 'Start time MM:SS (or H:MM:SS) from the beginning of the whole recording.' },
+          end: { type: 'string', description: 'End time in the same format.' },
+          text: { type: 'string', description: 'Verbatim speech of one sentence or short utterance.' },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Транскрипт фрагмента [start, end] (секунди) з таймкодами.
+ * Джерело: blob (аудіо/відео) або youtubeUrl. Повертає [{start, end, text}] у секундах.
+ */
+export async function transcribe({ blob, mime, youtubeUrl, start, end }) {
+  const { model } = await setup();
+  let media;
+  if (youtubeUrl) {
+    media = { type: 'video', uri: youtubeUrl };
+  } else {
+    const kind = mime.startsWith('video') ? 'video' : 'audio';
+    media = blob.size <= INLINE_MAX
+      ? { type: kind, data: await blobToBase64(blob), mime_type: mime }
+      : { type: kind, uri: (await uploadFile(blob, mime)).uri, mime_type: mime };
+  }
+  const prompt = `Transcribe the spoken English in this recording verbatim, only from ${timecode(start)} to ${timecode(end)}.
+Split it into segments of one sentence or one short utterance each.
+Timestamps are MM:SS (or H:MM:SS) measured from the very beginning of the whole recording, not from ${timecode(start)}.
+Write words exactly as spoken, including reduced forms like "gonna" or "wanna". No speaker names, no descriptions of sounds or music.`;
+  const res = await post({
+    model,
+    input: [{ type: 'user_input', content: [media, { type: 'text', text: prompt }] }],
+    generation_config: { thinking_level: 'low', max_output_tokens: 16000 },
+    response_format: { type: 'text', mime_type: 'application/json', schema: TRANSCRIPT_SCHEMA },
+  });
+  const interaction = await res.json();
+  checkFinal(interaction);
+  let data;
+  try { data = JSON.parse(outputText(interaction)); } catch { throw new AIError('Gemini повернув транскрипт у неочікуваному форматі. Спробуй ще раз.'); }
+  const segments = (data.segments || [])
+    .map((s) => ({ start: parseTimecode(s.start), end: parseTimecode(s.end), text: String(s.text || '').trim() }))
+    .filter((s) => s.text && s.start !== null && s.end !== null && s.end >= s.start)
+    .sort((a, b) => a.start - b.start);
+  if (!segments.length) throw new AIError('У цьому фрагменті Gemini не знайшов мовлення. Перевір час початку.');
+  return { segments, usage: toUsage(interaction.usage), model };
+}
+
 // Один запит зі структурованою JSON-відповіддю за схемою.
 export async function structured({ system, prompt, schema, effort = 'medium' }) {
   const { model } = await setup();

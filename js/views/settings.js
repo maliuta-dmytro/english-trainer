@@ -17,8 +17,9 @@ export async function render(root) {
     getSetting('model', CLAUDE_DEFAULT), getSetting('provider', 'claude'), getSetting('geminiKey', ''),
     getSetting('geminiModel', GEMINI_DEFAULT),
   ]);
-  const [ttsVoice, ttsRate, ttsEngine, geminiVoice] = await Promise.all([
+  const [ttsVoice, ttsRate, ttsEngine, geminiVoice, youtubeKey] = await Promise.all([
     getSetting('ttsVoice', ''), getSetting('ttsRate', 1), getSetting('ttsEngine', 'browser'), getSetting('geminiVoice', GEMINI_VOICE),
+    getSetting('youtubeKey', ''),
   ]);
   const persisted = (await navigator.storage?.persisted?.()) ?? false;
 
@@ -92,6 +93,21 @@ export async function render(root) {
           <div class="muted small">Типова розмова з розбором на Opus коштує орієнтовно кілька центів, на Sonnet приблизно вдвічі менше. Точну вартість видно в історії розмов.</div></div>
       </div>
       <button type="submit" class="primary">Зберегти</button>
+    </form>
+
+    <form class="card" id="yt">
+      <h2>YouTube <span class="tag">мої канали в «Слуханні»</span></h2>
+      <p class="small">Щоб гортати відео збережених каналів, потрібен безкоштовний ключ YouTube Data API:</p>
+      <ol class="small steps">
+        <li>Відкрий <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3 у Google Cloud Console</a> і натисни <strong>Enable</strong> (за потреби погодься створити проєкт).</li>
+        <li>Перейди в <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a> → <strong>Create credentials</strong> → <strong>API key</strong>.</li>
+        <li>Рекомендую обмежити ключ: <em>Application restrictions</em> → <em>Websites</em> → <code>${esc(location.origin)}/*</code>; <em>API restrictions</em> → лише YouTube Data API v3.</li>
+        <li>Скопіюй ключ і встав нижче.</li>
+      </ol>
+      <div class="field"><label for="s-ytkey">Ключ YouTube Data API</label>
+        <input type="password" id="s-ytkey" placeholder="AIza…" value="${esc(youtubeKey)}" autocomplete="off"></div>
+      <p class="muted small">Ключ зберігається лише в цьому браузері й не потрапляє в бекап. Безкоштовної квоти (10 000 одиниць на день) вистачає з великим запасом: оновлення каналу коштує кілька одиниць.</p>
+      <button type="submit">Зберегти</button>
     </form>
 
     <div class="card">
@@ -175,6 +191,12 @@ export async function render(root) {
     await loadSpeechSettings();
     toast(`Збережено. Працюємо з ${chosen === 'gemini' ? 'Gemini' : 'Claude'}`);
     render(root);
+  });
+
+  $('#yt').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await setSetting('youtubeKey', $('#s-ytkey').value.trim());
+    toast('Ключ YouTube збережено');
   });
 
   $('#export').addEventListener('click', async () => {

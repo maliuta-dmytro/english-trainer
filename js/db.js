@@ -2,7 +2,7 @@
 import { toast } from './ui.js';
 
 const DB_NAME = 'english-trainer';
-const DB_VERSION = 6;
+const DB_VERSION = 8;
 
 // cards         — фрази з розкладом повторень по обох напрямках
 // sessions      — облік часу по чотирьох потоках (input / output / focus / fluency)
@@ -14,6 +14,8 @@ const DB_VERSION = 6;
 // fluency       — сесії 4/3/2: тема, раунди, слова за хвилину
 // lessons       — граматичні міні-уроки: зміст, відповіді, перевірка
 // tts           — кеш озвучених голосом Gemini фраз (Blob), щоб не витрачати ліміт повторно
+// retells       — сесії «Слухай і перекажи»: матеріал, фрагмент, позначки, переказ, розбір
+// channels      — збережені YouTube-канали й кеш списку їхніх відео
 let dbPromise;
 
 function openDb() {
@@ -54,6 +56,12 @@ function openDb() {
       }
       if (!db.objectStoreNames.contains('tts')) {
         db.createObjectStore('tts', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('channels')) {
+        db.createObjectStore('channels', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('retells')) {
+        db.createObjectStore('retells', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => {
@@ -105,13 +113,13 @@ export function uid() {
 }
 
 // Ключі API ніколи не потрапляють у бекап і не відновлюються з нього.
-const SECRET_KEYS = new Set(['apiKey', 'geminiKey']);
+const SECRET_KEYS = new Set(['apiKey', 'geminiKey', 'youtubeKey']);
 
 // Повний бекап у JSON; імпорт замінює записи з тими самими id і додає нові.
 export async function exportAll() {
   // Медіафайли в бекап не потрапляють (завеликі) — після відновлення їх додають знову.
-  const [cards, sessions, meta, conversations, errors, dictations, fluency, lessons] = await Promise.all(
-    ['cards', 'sessions', 'meta', 'conversations', 'errors', 'dictations', 'fluency', 'lessons'].map(getAll),
+  const [cards, sessions, meta, conversations, errors, dictations, fluency, lessons, retells, channels] = await Promise.all(
+    ['cards', 'sessions', 'meta', 'conversations', 'errors', 'dictations', 'fluency', 'lessons', 'retells', 'channels'].map(getAll),
   );
   return {
     app: 'english-trainer',
@@ -124,6 +132,8 @@ export async function exportAll() {
     dictations,
     fluency,
     lessons,
+    retells,
+    channels,
     meta: meta.filter((m) => !SECRET_KEYS.has(m.key)),
   };
 }
@@ -137,6 +147,8 @@ export async function importAll(data) {
   await putMany('dictations', data.dictations || []);
   await putMany('fluency', data.fluency || []);
   await putMany('lessons', data.lessons || []);
+  await putMany('retells', data.retells || []);
+  await putMany('channels', data.channels || []);
   await putMany('meta', (data.meta || []).filter((m) => !SECRET_KEYS.has(m.key)));
   return { cards: (data.cards || []).length, sessions: (data.sessions || []).length };
 }
